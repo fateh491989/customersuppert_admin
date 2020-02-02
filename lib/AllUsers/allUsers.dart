@@ -199,15 +199,20 @@ class _AllUsersState extends State<AllUsers> {
                   builder: (context, snapshot) {
                     print(groupChatId);
                     if (snapshot.hasData) {
-                      return snapshot.data.data['count']==0? Container():CircleAvatar(
+                      return snapshot.data.exists?
+                       snapshot.data.data['count']==0? Container():CircleAvatar(
                         backgroundColor: Theme.of(context).primaryColor,
                         radius: 15,
                         child: Text(snapshot.data.data['count'].toString(),style: TextStyle(
                           fontSize: 15
                         ),),
-                      );
-                    } else {
-                      return Text('waiting');
+                      ):Container();
+                    }
+                    else if(snapshot.hasError){
+                      return Text('0');
+                    }
+                    else {
+                      return Text('');
                     }
                   },
                 )

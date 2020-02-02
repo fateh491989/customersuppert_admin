@@ -25,8 +25,14 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double _screenWidth = MediaQuery.of(context).size.width,
-        _screenHeight = MediaQuery.of(context).size.height;
+    double _screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width,
+        _screenHeight = MediaQuery
+            .of(context)
+            .size
+            .height;
 
     return Column(
       children: <Widget>[
@@ -92,7 +98,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                     keyboardType: TextInputType.number,
                     controller: _phoneTextController,
                     decoration: const InputDecoration(
-                        //hintStyle: TextStyle(fontSize: 12),
+                      //hintStyle: TextStyle(fontSize: 12),
                         hintText: 'Phone number'),
                     validator: (String value) {
                       if (value.isEmpty) {
@@ -130,9 +136,8 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   }
 
   void _verifyPhoneNumber() async {
-
     if (_countryTextController.text == '') {
-    //  Navigator.pop(context);
+      //  Navigator.pop(context);
       showDialog(
           context: context,
           builder: (v) {
@@ -150,50 +155,61 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
             );
           });
     } else {
-      showDialog(context: context,builder: (_){
+      showDialog(context: context, builder: (_) {
         return LoadingAlertDialog();
       });
-      final PhoneVerificationCompleted verificationCompleted =
-          (AuthCredential phoneAuthCredential) async {
-        print("h");
-        final FirebaseUser user =
-            (await ChatApp.auth.signInWithCredential(phoneAuthCredential)).user;
+      ChatApp.firestore.collection(ChatApp.collectionAdmin)
+          .getDocuments()
+          .then((document) async {
+        print(document.documents.length);
+       // print(document.documents[0].data[ChatApp.userPhoneNumber]);
+        var _query;
+        document.documents.length == 0
+            ? _query = document.documents.length == 0
+            :_query = document.documents[0].data[ChatApp.userPhoneNumber] ==
+            '+${_countryTextController.text + _phoneTextController.text}';
+        if (_query) {
+          final PhoneVerificationCompleted verificationCompleted =
+              (AuthCredential phoneAuthCredential) async {
+            print("h");
+            final FirebaseUser user =
+                (await ChatApp.auth.signInWithCredential(phoneAuthCredential))
+                    .user;
+            final FirebaseUser currentUser = await ChatApp.auth.currentUser();
+            assert(user.uid == currentUser.uid);
 
-        //(await ChatApp.auth.signInWithCredential(credential)).user;
-        final FirebaseUser currentUser = await ChatApp.auth.currentUser();
-        assert(user.uid == currentUser.uid);
+            if (user != null) {
+              _message = 'Successfully signed in, uid: ' + user.uid;
+              //TODO
+              print(_message);
+              print("Landing");
+              await ChatApp.sharedPreferences
+                  .setString(ChatApp.userUID, user.uid);
+              await ChatApp.sharedPreferences.setString(ChatApp.userPhoneNumber,
+                  "+${_countryTextController.text +
+                      _phoneTextController.text}");
+              ChatApp.firestore
+                  .collection(ChatApp.collectionAdmin)
+                  .document(user.uid)
+                  .setData({
+                ChatApp.userUID: user.uid,
+                ChatApp.userPhoneNumber: '+${_countryTextController.text +
+                    _phoneTextController.text}'
+              }).then((_) {
+                Navigator.pop(context);
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (builder) => PersonalInfo()));
+              });
+              //TODO
+              // change peer ID with your ID
+            } else {
+              _message = 'Sign in failed';
+            }
 
-          if (user != null) {
-            _message = 'Successfully signed in, uid: ' + user.uid;
-            //TODO
-            print(_message);
-            print("Landing");
-            await ChatApp.sharedPreferences
-                .setString(ChatApp.userUID, user.uid);
-            await ChatApp.sharedPreferences.setString(ChatApp.userPhoneNumber,
-                "+${_countryTextController.text + _phoneTextController.text}");
-            ChatApp.firestore
-                .collection(ChatApp.collectionAdmin)
-                .document(user.uid)
-                .setData({
-              ChatApp.userUID: user.uid,
-              ChatApp.userPhoneNumber: '+${_countryTextController.text + _phoneTextController.text}'
-            }).then((_){
-              Navigator.pop(context);
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (builder) => PersonalInfo()));
-            });
-            //TODO
-            // change peer ID with your ID
-          } else {
-            _message = 'Sign in failed';
-          }
-
-          _message = 'Received phone auth credential: $phoneAuthCredential';
-      };
-
-      final PhoneVerificationFailed verificationFailed =
-          (AuthException authException) {
+            _message = 'Received phone auth credential: $phoneAuthCredential';
+          };
+          final PhoneVerificationFailed verificationFailed =
+              (AuthException authException) {
             Navigator.pop(context);
             showDialog(
                 context: context,
@@ -202,40 +218,54 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                     message: 'Phone number verification failed.',
                   );
                 });
-        setState(() {
-          _message =
-              'Phone number verification failed. Code: ${authException.code}. Message: ${authException.message}';
-          _scaffoldState.currentState.showSnackBar(SnackBar(
-            content: Text(_message),
-          ));
-        });
-      };
+            setState(() {
+              _message =
+              'Phone number verification failed. Code: ${authException
+                  .code}. Message: ${authException.message}';
+              _scaffoldState.currentState.showSnackBar(SnackBar(
+                content: Text(_message),
+              ));
+            });
+          };
 
-      final PhoneCodeSent codeSent =
-          (String verificationId, [int forceResendingToken]) async {
-        print("g");
-        _verificationId = verificationId;
-        await ChatApp.sharedPreferences.setString(ChatApp.userPhoneNumber,
-            "+${_countryTextController.text + _phoneTextController.text}");
-        Navigator.pop(context);
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => SignIn(verificationId)));
-      };
+          final PhoneCodeSent codeSent =
+              (String verificationId, [int forceResendingToken]) async {
+            print("g");
+            _verificationId = verificationId;
+            await ChatApp.sharedPreferences.setString(ChatApp.userPhoneNumber,
+                "+${_countryTextController.text + _phoneTextController.text}");
+            Navigator.pop(context);
+            Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (context) => SignIn(verificationId)));
+          };
 
-      final PhoneCodeAutoRetrievalTimeout codeAutoRetrievalTimeout =
-          (String verificationId) {
-        _verificationId = verificationId;
-      };
-      print(_countryTextController.text + _phoneTextController.text);
-      await ChatApp.auth.verifyPhoneNumber(
-          phoneNumber:
+          final PhoneCodeAutoRetrievalTimeout codeAutoRetrievalTimeout =
+              (String verificationId) {
+            _verificationId = verificationId;
+          };
+          print(_countryTextController.text + _phoneTextController.text);
+          await ChatApp.auth.verifyPhoneNumber(
+              phoneNumber:
               "+${_countryTextController.text}${_phoneTextController.text}",
-          timeout: const Duration(seconds: 5),
-          verificationCompleted: verificationCompleted,
-          verificationFailed: verificationFailed,
-          codeSent: codeSent,
-          codeAutoRetrievalTimeout: codeAutoRetrievalTimeout);
-      print(_message);
+              timeout: const Duration(seconds: 5),
+              verificationCompleted: verificationCompleted,
+              verificationFailed: verificationFailed,
+              codeSent: codeSent,
+              codeAutoRetrievalTimeout: codeAutoRetrievalTimeout);
+          print(_message);
+        }
+        else {
+          Navigator.pop(context);
+          showDialog(
+              context: context,
+              builder: (v) {
+                return ErrorAlertDialog(
+                  message: "There is already one admin",
+                );
+              });
+        }
+      });
     }
   }
 }
